@@ -1,5 +1,6 @@
 GCC = gcc
-CFLAGS = -g -Wall -Wpedantic
+CFLAGS = -Wall -Wpedantic
+SOURCES = cefunge.c error.c
 
 all: clean out_dir out
 
@@ -8,7 +9,7 @@ run: all
 	@./bin/cefunge
 
 out:
-	$(GCC) $(CFLAGS) -o bin/cefunge cefunge.c
+	$(GCC) $(CFLAGS) -o bin/cefunge $(SOURCES)
 
 out_dir:
 	mkdir bin

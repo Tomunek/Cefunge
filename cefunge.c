@@ -3,35 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-// Runtime error codes
-#define CONTINUE_EXECUTION -1
-#define ERROR_OK_END 0
-#define ERROR_STACK_OVERFLOW 1
-#define ERROR_STACK_UNDERFLOW 2
-#define ERROR_BOUNDRY_REACHED 3
-#define ERROR_OUT_OF_RANGE_OP 4
-#define ERROR_TIMEOUT 5
-// Error code to string translator
-static const char *runtime_error_to_string(int error)
-{
-    switch (error)
-    {
-    case ERROR_OK_END:
-        return "Program finished successfully";
-    case ERROR_STACK_OVERFLOW:
-        return "Stack overflow";
-    case ERROR_STACK_UNDERFLOW:
-        return "Stack underflow";
-    case ERROR_BOUNDRY_REACHED:
-        return "Instruction pointer reached playfield boundry";
-    case ERROR_OUT_OF_RANGE_OP:
-        return "Used out-of-range pointer";
-    case ERROR_TIMEOUT:
-        return "Program timed out";
-    default:
-        return "Unknown error code! This message should never be displayed!";
-    }
-}
+#include "error.h"
 
 // Playfield
 char *field;
@@ -73,44 +45,13 @@ void insert_line(const char *line, unsigned int x, unsigned int y)
     strcpy(field + field_width * y + x, line);
 }
 
-void debug_insert_hello_world()
-{
-    insert_line(">              v", 0, 0);
-    insert_line("v\"Hello World!\"<", 0, 1);
-    insert_line(">:v", 0, 2);
-    insert_line("^,_@", 0, 3);
-}
-
-// File error codes
-#define FILE_ERROR_OK 0
-#define FILE_ERROR_OPEN 1
-#define FILE_ERROR_WIDTH_OVERFLOW 2
-#define FILE_ERROR_HEIGHT_OVERFLOW 3
-// File error code to string translator
-static const char *file_error_to_string(int error)
-{
-    switch (error)
-    {
-    case FILE_ERROR_OK:
-        return "File read successfully";
-    case FILE_ERROR_OPEN:
-        return "File opening error";
-    case FILE_ERROR_WIDTH_OVERFLOW:
-        return "Width overflow";
-    case FILE_ERROR_HEIGHT_OVERFLOW:
-        return "Height overflow";
-    default:
-        return "Unknown file error code! This message should never be displayed!";
-    }
-}
-
 // Read program from file. Returns 0 on success, otherwise returns non-zero error code
 int read_field_from_file(const char *file_name)
 {
     FILE *file = fopen(file_name, "r");
     // Detect file opening error
     if (!file)
-        return 1;
+        return FILE_ERROR_OPEN;
 
     int max_line_length = field_width + 1;
     char *line = calloc(max_line_length, sizeof(char));
@@ -128,7 +69,7 @@ int read_field_from_file(const char *file_name)
         // Detect width overflow
         if (line_length == max_line_length)
         {
-            return 2;
+            return FILE_ERROR_WIDTH_OVERFLOW;
         }
         for (int i = 0; i < line_length; ++i)
         {
@@ -142,13 +83,13 @@ int read_field_from_file(const char *file_name)
         }
         else
         {
-            return 3;
+            return FILE_ERROR_HEIGHT_OVERFLOW;
         }
         line_number++;
     }
 
     fclose(file);
-    return 0;
+    return FILE_OK;
 }
 
 // Calculate one step of a program. Returns -1 if execution continues, otherwise returns non-zero error code
@@ -156,14 +97,14 @@ int step_field()
 {
     printf("TODO: run step\n");
     // TODO: run step (interpreting instructions)
-    return 0;
+    return RUNTIME_OK_END;
 }
 
 // Run program on field. Returns 0 on succesful exit (@), otherwise returns non-zero error code
 int run_field()
 {
-    int status = -1;
-    while (status < 0)
+    int status = RUNTIME_CONTINUE_EXECUTION;
+    while (status == RUNTIME_CONTINUE_EXECUTION)
     {
         status = step_field();
     }
@@ -175,7 +116,7 @@ int main()
     // TODO: add command line arguments handling
     field_width = 80;
     field_height = 25;
-    char* file_name = "examples/HeloWorld.befunge";
+    char* file_name = "examples/HelloWorld.befunge";
     field_length = field_width * field_height;
 
     // Allocate field
@@ -192,14 +133,14 @@ int main()
     status = read_field_from_file(file_name);
 
     // Execute rest of the program only if reading was successful
-    if(!status){
+    if(status == FILE_OK){
         print_field(stdout, '-');
 
         status = run_field();
-        printf("Program finished with code: %s\n", runtime_error_to_string(status));
+        printf("Program finished with code: %s\n", error_to_string(status));
     }else{
         // File reading error happened
-        printf("[ERROR] Could not read program from file %s: %s\n", file_name, file_error_to_string(status));
+        printf("[ERROR] Could not read program from file %s: %s\n", file_name, error_to_string(status));
     }
 
     // Deallocate field
