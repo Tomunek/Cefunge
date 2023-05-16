@@ -81,6 +81,53 @@ void debug_insert_hello_world()
     insert_line("^,_@", 0, 3);
 }
 
+// Read program from file. Returns 0 on success, 1 on file error, 2 on width overflow, 3 on height overflow
+int read_field_from_file(const char *file_name)
+{
+    FILE *file = fopen(file_name, "r");
+    // Detect file opening error
+    if (!file)
+        return 1;
+
+    int max_line_length = field_width + 1;
+    char *line = calloc(max_line_length, sizeof(char));
+    int line_length = -1;
+    int line_number = 0;
+
+    while (line_length != 0)
+    {
+        memset(line, 0, max_line_length);
+        line_length = 0;
+        if (fgets(line, max_line_length, file))
+        {
+            line_length = strlen(line);
+        }
+        // Detect width overflow
+        if (line_length == max_line_length)
+        {
+            return 2;
+        }
+        for (int i = 0; i < line_length; ++i)
+        {
+            if (line[i] == '\n' || line[i] == '\r')
+                line[i] = ' ';
+        }
+        // Detect height overflow or insert line into field
+        if (line_number < field_height)
+        {
+            insert_line(line, 0, line_number);
+        }
+        else
+        {
+            return 3;
+        }
+        line_number++;
+    }
+
+    fclose(file);
+    return 0;
+}
+
 // Calculate one step of a program. Returns -1 if execution continues, otherwise returns non-zero error code
 int step_field()
 {
@@ -111,11 +158,14 @@ int main()
     // Set field to all [SPACE]
     memset(field, ' ', field_length);
 
-    debug_insert_hello_world();
+    int status;
+    status = read_field_from_file("examples/HelloWorld.befunge");
+
+    printf("Program read with code: %d\n", status);
 
     print_field(stdout, '-');
 
-    int status = run_field();
+    status = run_field();
     printf("Program finished with code: %d (%s)\n", status, error_to_string(status));
 
     // Deallocate field
