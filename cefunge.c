@@ -53,7 +53,7 @@ int read_field_from_file(const char *file_name)
     if (!file)
         return FILE_ERROR_OPEN;
 
-    int max_line_length = field_width + 1;
+    int max_line_length = field_width + 2;
     char *line = calloc(max_line_length, sizeof(char));
     int line_length = -1;
     int line_number = 0;
@@ -99,6 +99,22 @@ signed long int *stack;
 int stack_size;
 int stack_capacity;
 
+void stack_push(signed long int v)
+{
+    stack[stack_size] = v;
+    stack_size += 1;
+}
+
+signed long int stack_pop()
+{
+    if (stack_size > 0)
+    {
+        stack_size -= 1;
+        return stack[stack_size];
+    }
+    return 0;
+}
+
 void print_debug_info()
 {
     printf("IP:%d,%d\n", ip_x, ip_y);
@@ -109,12 +125,6 @@ void print_debug_info()
     {
         printf("STACK(%d): %ld\n", i, stack[i]);
     }
-}
-
-void handle_stack_underflow()
-{
-    stack[stack_size] = 0;
-    stack_size += 1;
 }
 
 void handle_ip_out_of_field()
@@ -142,6 +152,7 @@ int step_field()
 {
     if (!string_mode)
     {
+        signed long int a, b, x, y, v;
         switch (field[coords(ip_x, ip_y)])
         {
         // Nothing
@@ -151,105 +162,63 @@ int step_field()
             break;
         // Addition: Pop two values a and b, then push the result of a+b
         case '+':
-            if (stack_size >= 2)
-            {
-                stack[stack_size - 2] = stack[stack_size - 2] + stack[stack_size - 1];
-                stack_size -= 1;
-            }
-            else
-            {
-                handle_stack_underflow();
-            }
+            a = stack_pop();
+            b = stack_pop();
+            stack_push(a + b);
             break;
         // Subtraction: Pop two values a and b, then push the result of b-a
         case '-':
-            if (stack_size >= 2)
-            {
-                stack[stack_size - 2] = stack[stack_size - 2] - stack[stack_size - 1];
-                stack_size -= 1;
-            }
-            else
-            {
-                handle_stack_underflow();
-            }
+            a = stack_pop();
+            b = stack_pop();
+            stack_push(b - a);
             break;
         // Multiplication: Pop two values a and b, then push the result of a*b
         case '*':
-            if (stack_size >= 2)
-            {
-                stack[stack_size - 2] = stack[stack_size - 2] * stack[stack_size - 1];
-                stack_size -= 1;
-            }
-            else
-            {
-                handle_stack_underflow();
-            }
+            a = stack_pop();
+            b = stack_pop();
+            stack_push(a * b);
             break;
         // Integer division: Pop two values a and b, then push the result of b/a, rounded down.
         // According to the specifications, if a is zero, ask the user what result they want.
         case '/':
-            if (stack_size >= 2)
+            a = stack_pop();
+            b = stack_pop();
+            if (a != 0)
             {
-                if (stack[stack_size - 1] != 0)
-                {
-                    stack[stack_size - 2] = stack[stack_size - 2] / stack[stack_size - 1];
-                }
-                else
-                {
-                    // Division by 0
-                    printf("Division by 0 occured. Enter desired result (or 0 will be assumed): ");
-                    if (scanf("%ld", &stack[stack_size - 2]) == EOF)
-                    {
-                        stack[stack_size - 2] = 0;
-                    }
-                }
-                stack_size -= 1;
+                stack_push(b / a);
             }
             else
             {
-                handle_stack_underflow();
+                // Division by 0
+                printf("Division by 0 occured. Enter desired result (or 0 will be assumed): ");
+                if (scanf("%ld", &a) == EOF)
+                {
+                    stack_push(a);
+                }
             }
             break;
         // Modulo: Pop two values a and b, then push the remainder of the integer division of b/a.
         case '%':
-            if (stack_size >= 2)
-            {
-                stack[stack_size - 2] = stack[stack_size - 2] % stack[stack_size - 1];
-                stack_size -= 1;
-            }
-            else
-            {
-                handle_stack_underflow();
-            }
+            a = stack_pop();
+            b = stack_pop();
+            stack_push(b % a);
             break;
         // Logical NOT: Pop a value. If the value is zero, push 1; otherwise, push zero.
         case '!':
-            if (stack_size >= 1)
-            {
-                stack[stack_size - 1] = !stack[stack_size - 1];
-            }
-            else
-            {
-                handle_stack_underflow();
-            }
+            a = stack_pop();
+            stack_push(!a);
             break;
         // Greater than: Pop two values a and b, then push 1 if b>a, otherwise zero.
         case '`':
-            if (stack_size >= 2)
+            a = stack_pop();
+            b = stack_pop();
+            if (b > a)
             {
-                if (stack[stack_size - 2] > stack[stack_size - 1])
-                {
-                    stack[stack_size - 2] = 1;
-                }
-                else
-                {
-                    stack[stack_size - 2] = 0;
-                }
-                stack_size -= 1;
+                stack_push(1);
             }
             else
             {
-                handle_stack_underflow();
+                stack_push(0);
             }
             break;
         // PC direction right
@@ -288,40 +257,26 @@ int step_field()
             break;
         // Horizontal IF: pop a value; set direction to right if value=0, set to left otherwise
         case '_':
-            if (stack_size >= 1)
+            a = stack_pop();
+            if (a == 0)
             {
-                if (stack[stack_size - 1] == 0)
-                {
-                    ip_inertia = 'r';
-                }
-                else
-                {
-                    ip_inertia = 'l';
-                }
-                stack_size -= 1;
+                ip_inertia = 'r';
             }
             else
             {
-                handle_stack_underflow();
+                ip_inertia = 'l';
             }
             break;
         // Vertical IF: pop a value; set direction to down if value=0, set to up otherwise
         case '|':
-            if (stack_size >= 1)
+            a = stack_pop();
+            if (a == 0)
             {
-                if (stack[stack_size - 1] == 0)
-                {
-                    ip_inertia = 'd';
-                }
-                else
-                {
-                    ip_inertia = 'u';
-                }
-                stack_size -= 1;
+                ip_inertia = 'd';
             }
             else
             {
-                handle_stack_underflow();
+                ip_inertia = 'u';
             }
             break;
         // Toggle stringmode (push each character's ASCII value all the way up to the next ")
@@ -330,63 +285,29 @@ int step_field()
             break;
         // Duplicate top stack value
         case ':':
-            if (stack_size >= 1)
-            {
-                stack[stack_size] = stack[stack_size - 1];
-                stack_size += 1;
-            }
-            else
-            {
-                handle_stack_underflow();
-            }
+            a = stack_pop();
+            stack_push(a);
+            stack_push(a);
             break;
         // Swap top stack values
         case '\\':
-            if (stack_size >= 2)
-            {
-                signed char tmp = stack[stack_size - 2];
-                stack[stack_size - 2] = stack[stack_size - 1];
-                stack[stack_size - 1] = tmp;
-            }
-            else
-            {
-                handle_stack_underflow();
-            }
-            break;
+            a = stack_pop();
+            b = stack_pop();
+            stack_push(a);
+            stack_push(b);
         // Pop top of stack and discard
         case '$':
-            if (stack_size >= 1)
-            {
-                stack_size -= 1;
-            }
-            else
-            {
-                handle_stack_underflow();
-            }
+            a = stack_pop();
             break;
         // Pop top of stack and output as integer
         case '.':
-            if (stack_size >= 1)
-            {
-                printf("%d", (short int)stack[stack_size - 1]);
-                stack_size -= 1;
-            }
-            else
-            {
-                handle_stack_underflow();
-            }
+            a = stack_pop();
+            printf("%ld", a);
             break;
         // Pop top of stack and output as ASCII character
         case ',':
-            if (stack_size >= 1)
-            {
-                printf("%c", (char)stack[stack_size - 1]);
-                stack_size -= 1;
-            }
-            else
-            {
-                handle_stack_underflow();
-            }
+            a = stack_pop();
+            printf("%c", (char)a);
             break;
         // Bridge: jump over next command in the current direction of the current PC
         case '#':
@@ -410,63 +331,47 @@ int step_field()
         // A "get" call (a way to retrieve data in storage). Pop two values y and x, then push the ASCII value
         // of the character at that position in the program. If (x,y) is out of bounds, push 0
         case 'g':
-            if (stack_size >= 2)
+            y = stack_pop();
+            x = stack_pop();
+            if (x < 0 || x >= field_width || y < 0 || y >= field_height)
             {
-                int y = stack[stack_size - 1];
-                int x = stack[stack_size - 2];
-                if (x < 0 || x >= field_width || y < 0 || y >= field_height)
-                {
-                    stack[stack_size - 2] = 0;
-                }
-                else
-                {
-                    stack[stack_size - 2] = field[coords(x, y)];
-                }
-                stack_size -= 1;
+                stack_push(0);
             }
             else
             {
-                handle_stack_underflow();
+                stack_push(field[coords(x, y)]);
             }
             break;
         // A "put" call (a way to store a value for later use). Pop three values y, x and v, then change the
         // character at the position (x,y) in the program to the character with ASCII value v
         case 'p':
-            if (stack_size >= 3)
+            y = stack_pop();
+            x = stack_pop();
+            v = stack_pop();
+            if (x < 0 || x >= field_width || y < 0 || y >= field_height)
             {
-                int y = stack[stack_size - 1];
-                int x = stack[stack_size - 2];
-                int v = stack[stack_size - 3];
-                if (x < 0 || x >= field_width || y < 0 || y >= field_height)
-                {
-                    return RUNTIME_ERROR_OUT_OF_RANGE_OP;
-                }
-                else
-                {
-                    field[coords(x, y)] = v;
-                }
-                stack_size -= 3;
+                return RUNTIME_ERROR_OUT_OF_RANGE_OP;
             }
             else
             {
-                handle_stack_underflow();
+                field[coords(x, y)] = v;
             }
             break;
         // Get integer from user and push it
         case '&':
-            if (scanf("%ld", &stack[stack_size]) == EOF)
+            if (scanf("%ld", &a) == EOF)
             {
-                stack[stack_size] = 0;
+                a = 0;
             }
-            stack_size += 1;
+            stack_push(a);
             break;
         // Get character from user and push it
         case '~':
-            if (scanf("%c", (char *)&stack[stack_size]) == EOF)
+            if (scanf("%c", (char *)&a) == EOF)
             {
-                stack[stack_size] = 0;
+                a = 0;
             }
-            stack_size += 1;
+            stack_push(a);
             break;
         // End program
         case '@':
@@ -476,8 +381,7 @@ int step_field()
             // Push corresponding number onto the stack
             if ('0' <= field[coords(ip_x, ip_y)] && field[coords(ip_x, ip_y)] <= '9')
             {
-                stack[stack_size] = field[coords(ip_x, ip_y)] - '0';
-                stack_size += 1;
+                stack_push(field[coords(ip_x, ip_y)] - '0');
             }
             else
             {
@@ -490,8 +394,7 @@ int step_field()
         // String mode
         if (field[coords(ip_x, ip_y)] != '"')
         {
-            stack[stack_size] = field[coords(ip_x, ip_y)];
-            stack_size++;
+            stack_push(field[coords(ip_x, ip_y)]);
         }
         else
         {
@@ -530,8 +433,8 @@ int run_field()
     int status = RUNTIME_CONTINUE_EXECUTION;
     while (status == RUNTIME_CONTINUE_EXECUTION)
     {
-        status = step_field();
         print_debug_info();
+        status = step_field();
     }
     return status;
 }
@@ -541,7 +444,7 @@ int main()
     // TODO: add command line arguments handling
     field_width = 80;
     field_height = 25;
-    char *file_name = "examples/Calculator.befunge";
+    char *file_name = "examples/99BottlesOfBeer.befunge";
     field_length = field_width * field_height;
 
     // Allocate field
