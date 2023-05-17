@@ -9,12 +9,10 @@ const char *error_to_string(int error)
         return "Success";
     case RUNTIME_ERROR_STACK_OVERFLOW:
         return "Stack overflow";
-    case RUNTIME_ERROR_STACK_UNDERFLOW:
-        return "Stack underflow";
-    case RUNTIME_ERROR_BOUNDRY_REACHED:
-        return "Instruction pointer reached playfield boundry";
     case RUNTIME_ERROR_OUT_OF_RANGE_OP:
         return "Used out-of-range pointer";
+    case RUNTIME_ERROR_UNKNOWN_OP:
+        return "Unknown operation";
     case RUNTIME_ERROR_TIMEOUT:
         return "Program timed out";
     case FILE_ERROR_OPEN:
