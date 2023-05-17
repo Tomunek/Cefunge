@@ -99,6 +99,18 @@ signed long int *stack;
 int stack_size;
 int stack_capacity;
 
+void print_debug_info()
+{
+    printf("IP:%d,%d\n", ip_x, ip_y);
+    printf("DIR:%c\n", ip_inertia);
+    printf("OP:%c (%hhd)\n", field[coords(ip_x, ip_y)], field[coords(ip_x, ip_y)]);
+    printf("STACK:\n");
+    for (int i = 0; i < stack_size; ++i)
+    {
+        printf("STACK(%d): %ld\n", i, stack[i]);
+    }
+}
+
 void handle_stack_underflow()
 {
     stack[stack_size] = 0;
@@ -132,10 +144,12 @@ int step_field()
     {
         switch (field[coords(ip_x, ip_y)])
         {
+        // Nothing
         case 0:
             break;
         case ' ':
             break;
+        // Addition: Pop two values a and b, then push the result of a+b
         case '+':
             if (stack_size >= 2)
             {
@@ -147,6 +161,7 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Subtraction: Pop two values a and b, then push the result of b-a
         case '-':
             if (stack_size >= 2)
             {
@@ -158,6 +173,7 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Multiplication: Pop two values a and b, then push the result of a*b
         case '*':
             if (stack_size >= 2)
             {
@@ -169,31 +185,32 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Integer division: Pop two values a and b, then push the result of b/a, rounded down.
+        // According to the specifications, if a is zero, ask the user what result they want.
         case '/':
             if (stack_size >= 2)
             {
                 if (stack[stack_size - 1] != 0)
                 {
                     stack[stack_size - 2] = stack[stack_size - 2] / stack[stack_size - 1];
-                    stack_size -= 1;
                 }
                 else
                 {
                     // Division by 0
-                    // According to documentation: if a is zero, ask the user what result they want
                     printf("Division by 0 occured. Enter desired result (or 0 will be assumed): ");
                     if (scanf("%ld", &stack[stack_size - 2]) == EOF)
                     {
                         stack[stack_size - 2] = 0;
                     }
-                    stack_size -= 1;
                 }
+                stack_size -= 1;
             }
             else
             {
                 handle_stack_underflow();
             }
             break;
+        // Modulo: Pop two values a and b, then push the remainder of the integer division of b/a.
         case '%':
             if (stack_size >= 2)
             {
@@ -205,6 +222,7 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Logical NOT: Pop a value. If the value is zero, push 1; otherwise, push zero.
         case '!':
             if (stack_size >= 1)
             {
@@ -215,6 +233,7 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Greater than: Pop two values a and b, then push 1 if b>a, otherwise zero.
         case '`':
             if (stack_size >= 2)
             {
@@ -233,18 +252,23 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // PC direction right
         case '>':
             ip_inertia = 'r';
             break;
+        // PC direction left
         case '<':
             ip_inertia = 'l';
             break;
+        // PC direction up
         case '^':
             ip_inertia = 'u';
             break;
+        // PC direction down
         case 'v':
             ip_inertia = 'd';
             break;
+        // Random PC direction
         case '?':
             switch (rand() % 4)
             {
@@ -262,6 +286,7 @@ int step_field()
                 break;
             }
             break;
+        // Horizontal IF: pop a value; set direction to right if value=0, set to left otherwise
         case '_':
             if (stack_size >= 1)
             {
@@ -280,6 +305,7 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Vertical IF: pop a value; set direction to down if value=0, set to up otherwise
         case '|':
             if (stack_size >= 1)
             {
@@ -298,9 +324,11 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Toggle stringmode (push each character's ASCII value all the way up to the next ")
         case '"':
             string_mode = true;
             break;
+        // Duplicate top stack value
         case ':':
             if (stack_size >= 1)
             {
@@ -312,6 +340,7 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Swap top stack values
         case '\\':
             if (stack_size >= 2)
             {
@@ -324,6 +353,7 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Pop top of stack and discard
         case '$':
             if (stack_size >= 1)
             {
@@ -334,6 +364,7 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Pop top of stack and output as integer
         case '.':
             if (stack_size >= 1)
             {
@@ -345,6 +376,7 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Pop top of stack and output as ASCII character
         case ',':
             if (stack_size >= 1)
             {
@@ -356,6 +388,7 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Bridge: jump over next command in the current direction of the current PC
         case '#':
             switch (ip_inertia)
             {
@@ -374,6 +407,8 @@ int step_field()
             }
             handle_ip_out_of_field();
             break;
+        // A "get" call (a way to retrieve data in storage). Pop two values y and x, then push the ASCII value
+        // of the character at that position in the program. If (x,y) is out of bounds, push 0
         case 'g':
             if (stack_size >= 2)
             {
@@ -394,6 +429,8 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // A "put" call (a way to store a value for later use). Pop three values y, x and v, then change the
+        // character at the position (x,y) in the program to the character with ASCII value v
         case 'p':
             if (stack_size >= 3)
             {
@@ -415,18 +452,28 @@ int step_field()
                 handle_stack_underflow();
             }
             break;
+        // Get integer from user and push it
         case '&':
-            // TODO
-            printf("TODO: reading ints from user not implemented\n");
+            if (scanf("%ld", &stack[stack_size]) == EOF)
+            {
+                stack[stack_size] = 0;
+            }
+            stack_size += 1;
             break;
+        // Get character from user and push it
         case '~':
-            // TODO
-            printf("TODO: reading chars from user not implemented\n");
+            if (scanf("%c", (char *)&stack[stack_size]) == EOF)
+            {
+                stack[stack_size] = 0;
+            }
+            stack_size += 1;
             break;
+        // End program
         case '@':
             return RUNTIME_OK_END;
             break;
         default:
+            // Push corresponding number onto the stack
             if ('0' <= field[coords(ip_x, ip_y)] && field[coords(ip_x, ip_y)] <= '9')
             {
                 stack[stack_size] = field[coords(ip_x, ip_y)] - '0';
@@ -452,7 +499,7 @@ int step_field()
         }
     }
 
-    if (stack_size >= stack_capacity)
+    if (stack_size >= stack_capacity - 1)
     {
         return RUNTIME_ERROR_STACK_OVERFLOW;
     }
@@ -484,6 +531,7 @@ int run_field()
     while (status == RUNTIME_CONTINUE_EXECUTION)
     {
         status = step_field();
+        print_debug_info();
     }
     return status;
 }
@@ -493,7 +541,7 @@ int main()
     // TODO: add command line arguments handling
     field_width = 80;
     field_height = 25;
-    char *file_name = "examples/99BottlesOfBeer.befunge";
+    char *file_name = "examples/Calculator.befunge";
     field_length = field_width * field_height;
 
     // Allocate field
@@ -532,9 +580,7 @@ int main()
         if (status != RUNTIME_OK_END)
         {
             printf("[ERROR]: %s\n", error_to_string(status));
-            printf("IP:%d,%d\n", ip_x, ip_y);
-            printf("DIR:%c\n", ip_inertia);
-            printf("OP:%c (%hhd)\n", field[coords(ip_x, ip_y)], field[coords(ip_x, ip_y)]);
+            print_debug_info();
         }
 
         free(stack);
