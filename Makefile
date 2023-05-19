@@ -2,17 +2,14 @@ GCC = gcc
 CFLAGS = -Wall -Wpedantic
 SOURCES = cefunge.c error.c
 
-all: clean out_dir out
+all: clean out
 
 run: all
 	@echo "Running program:\n"
-	@./bin/cefunge
+	@./cefunge
 
 out:
-	$(GCC) $(CFLAGS) -o bin/cefunge $(SOURCES)
-
-out_dir:
-	mkdir bin
+	$(GCC) $(CFLAGS) -o cefunge $(SOURCES)
 
 clean:
-	rm -rf bin
+	rm -rf cefunge
