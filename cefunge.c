@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
 
 #include "error.h"
 
@@ -434,7 +435,7 @@ int run_field()
     int status = RUNTIME_CONTINUE_EXECUTION;
     while (status == RUNTIME_CONTINUE_EXECUTION)
     {
-        print_debug_info();
+        // print_debug_info();
         status = step_field();
     }
     return status;
@@ -442,10 +443,11 @@ int run_field()
 
 int main()
 {
+    srand(time(0));
     // TODO: add command line arguments handling
     field_width = 80;
     field_height = 25;
-    char *file_name = "examples/99BottlesOfBeer.befunge";
+    char *file_name = "examples/HelloWorld.befunge";
     field_length = field_width * field_height;
 
     // Allocate field
