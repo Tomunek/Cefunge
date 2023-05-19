@@ -10,6 +10,8 @@
 #define DEFAULT_HEIGHT 25
 #define DEFAULT_STACK_CAPACITY 1024
 
+#define MAX_READABLE_FILE_LINE 256
+
 // Playfield
 char *field;
 int field_width;
@@ -45,9 +47,9 @@ void print_field(FILE *output_stream, unsigned char decorations)
 }
 
 // Insert line of code at specified coordinates
-void insert_line(const char *line, unsigned int x, unsigned int y)
+void insert_line(const char *line, unsigned int len, unsigned int x, unsigned int y)
 {
-    strcpy(field + field_width * y + x, line);
+    memcpy(field + field_width * y + x, line, len);
 }
 
 // Read program from file. Returns 0 on success, otherwise returns non-zero error code
@@ -58,7 +60,7 @@ int read_field_from_file(const char *file_name)
     if (!file)
         return FILE_ERROR_OPEN;
 
-    int max_line_length = field_width + 2;
+    int max_line_length = MAX_READABLE_FILE_LINE;
     char *line = calloc(max_line_length, sizeof(char));
     int line_length = -1;
     int line_number = 0;
@@ -71,26 +73,28 @@ int read_field_from_file(const char *file_name)
         {
             line_length = strlen(line);
         }
-        // Detect width overflow
-        if (line_length == max_line_length)
-        {
-            return FILE_ERROR_WIDTH_OVERFLOW;
+        if(line_length > 0){
+            // Detect width overflow
+            if (line_length > field_width)
+            {
+                return FILE_ERROR_WIDTH_OVERFLOW;
+            }
+            for (int i = 0; i < line_length; ++i)
+            {
+                if (line[i] == '\n' || line[i] == '\r')
+                    line[i] = ' ';
+            }
+            // Detect height overflow or insert line into field
+            if (line_number < field_height)
+            {
+                insert_line(line, line_length, 0, line_number);
+            }
+            else
+            {
+                return FILE_ERROR_HEIGHT_OVERFLOW;
+            }
+            line_number++;
         }
-        for (int i = 0; i < line_length; ++i)
-        {
-            if (line[i] == '\n' || line[i] == '\r')
-                line[i] = ' ';
-        }
-        // Detect height overflow or insert line into field
-        if (line_number < field_height)
-        {
-            insert_line(line, 0, line_number);
-        }
-        else
-        {
-            return FILE_ERROR_HEIGHT_OVERFLOW;
-        }
-        line_number++;
     }
 
     fclose(file);
