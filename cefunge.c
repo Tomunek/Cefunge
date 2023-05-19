@@ -12,6 +12,11 @@
 
 #define MAX_READABLE_FILE_LINE 256
 
+// #define DECORATIONS -1 // Do not display field
+// #define DECORATIONS 0 // No decorations
+// #define DECORATIONS 1 // ASCII decorations
+#define DECORATIONS 2 // Unicode decorations
+
 // Playfield
 char *field;
 int field_width;
@@ -21,27 +26,52 @@ int field_length;
 unsigned int coords(unsigned int x, unsigned int y) { return x + y * field_width; }
 
 // Print playfield to selected stream
-void print_field(FILE *output_stream, unsigned char decorations)
+void print_field(FILE *output_stream, int decorations)
 {
-    if (decorations)
+    if (decorations == 1)
     {
         for (int i = 0; i < field_width; ++i)
-            putc(decorations, output_stream);
+            putc('-', output_stream);
+        putc('\n', output_stream);
+    }
+    if (decorations == 2)
+    {
+        fprintf(output_stream, "┏");
+        for (int i = 0; i < field_width; ++i)
+            fprintf(output_stream, "━");
+        fprintf(output_stream, "┓");
         putc('\n', output_stream);
     }
 
     for (int i = 0; i < field_height; ++i)
     {
+        if (decorations == 2)
+        {
+            fprintf(output_stream, "┃");
+        }
         for (int j = 0; j < field_width; ++j)
         {
             putc(field[coords(j, i)], output_stream);
         }
+        if (decorations == 2)
+        {
+            fprintf(output_stream, "┃");
+        }
         putc('\n', output_stream);
     }
-    if (decorations)
+
+    if (decorations == 1)
     {
         for (int i = 0; i < field_width; ++i)
-            putc(decorations, output_stream);
+            putc('-', output_stream);
+        putc('\n', output_stream);
+    }
+    if (decorations == 2)
+    {
+        fprintf(output_stream, "┗");
+        for (int i = 0; i < field_width; ++i)
+            fprintf(output_stream, "━");
+        fprintf(output_stream, "┛");
         putc('\n', output_stream);
     }
 }
@@ -73,7 +103,8 @@ int read_field_from_file(const char *file_name)
         {
             line_length = strlen(line);
         }
-        if(line_length > 0){
+        if (line_length > 0)
+        {
             // Detect width overflow
             if (line_length > field_width)
             {
@@ -465,6 +496,11 @@ int main(int argc, char **argv)
     // -s stack cap [1024]
     // program name as last argument
 
+    // Default values
+    field_width = DEFAULT_WIDTH;
+    field_height = DEFAULT_HEIGHT;
+    stack_capacity = DEFAULT_STACK_CAPACITY;
+
     // Argument handling
     if (argc < 2)
     {
@@ -473,17 +509,15 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Default values
-    field_width = DEFAULT_WIDTH;
-    field_height = DEFAULT_HEIGHT;
-    stack_capacity = DEFAULT_STACK_CAPACITY;
-
     int current_arg = 1;
-    while(current_arg < argc - 2){
-        if(strcmp(argv[current_arg], "-w") == 0){
+    while (current_arg < argc - 2)
+    {
+        if (strcmp(argv[current_arg], "-w") == 0)
+        {
             current_arg += 1;
             field_width = atoi(argv[current_arg]);
-            if(field_width <= 0){
+            if (field_width <= 0)
+            {
                 printf("[ERROR] Invalid field width specified (%s)!\n", argv[current_arg]);
                 print_usage();
                 return -1;
@@ -491,10 +525,12 @@ int main(int argc, char **argv)
             current_arg += 1;
         }
 
-        if(strcmp(argv[current_arg], "-h") == 0){
+        if (strcmp(argv[current_arg], "-h") == 0)
+        {
             current_arg += 1;
             field_height = atoi(argv[current_arg]);
-            if(field_height <= 0){
+            if (field_height <= 0)
+            {
                 printf("[ERROR] Invalid field height specified (%s)!\n", argv[current_arg]);
                 print_usage();
                 return -1;
@@ -502,10 +538,12 @@ int main(int argc, char **argv)
             current_arg += 1;
         }
 
-        if(strcmp(argv[current_arg], "-s") == 0){
+        if (strcmp(argv[current_arg], "-s") == 0)
+        {
             current_arg += 1;
             stack_capacity = atoi(argv[current_arg]);
-            if(stack_capacity <= 0){
+            if (stack_capacity <= 0)
+            {
                 printf("[ERROR] Invalid stack capacity specified (%s)!\n", argv[current_arg]);
                 print_usage();
                 return -1;
@@ -547,7 +585,11 @@ int main(int argc, char **argv)
         ip_inertia = '>';
         string_mode = false;
 
-        print_field(stdout, '-');
+        if (DECORATIONS >= 0)
+        {
+            printf("Playfield:\n");
+            print_field(stdout, DECORATIONS);
+        }
 
         status = run_field();
         printf("\n\nProgram finished with code: %s\n", error_to_string(status));
