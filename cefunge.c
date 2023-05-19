@@ -295,6 +295,7 @@ int step_field()
             b = stack_pop();
             stack_push(a);
             stack_push(b);
+            break;
         // Pop top of stack and discard
         case '$':
             a = stack_pop();
