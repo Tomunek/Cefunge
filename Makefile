@@ -6,7 +6,7 @@ all: clean out
 
 run: all
 	@echo "Running program:\n"
-	@./cefunge
+	@./cefunge examples/HelloWorld.befunge
 
 out:
 	$(GCC) $(CFLAGS) -o cefunge $(SOURCES)
