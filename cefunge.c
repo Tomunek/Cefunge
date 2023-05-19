@@ -6,11 +6,15 @@
 
 #include "error.h"
 
+#define DEFAULT_WIDTH 80
+#define DEFAULT_HEIGHT 25
+#define DEFAULT_STACK_CAPACITY 1024
+
 // Playfield
 char *field;
-unsigned int field_width;
-unsigned int field_height;
-unsigned int field_length;
+int field_width;
+int field_height;
+int field_length;
 // Helper function to 2D-ify field
 unsigned int coords(unsigned int x, unsigned int y) { return x + y * field_width; }
 
@@ -94,7 +98,7 @@ int read_field_from_file(const char *file_name)
 }
 
 int ip_x, ip_y;   // Instruction pointer
-char ip_inertia;  // Instruction pointer inertia (u/d/l/r)
+char ip_inertia;  // Instruction pointer inertia (^/v/</>)
 bool string_mode; // Is string mode active
 signed long int *stack;
 int stack_size;
@@ -106,7 +110,7 @@ void stack_push(signed long int v)
     stack_size += 1;
 }
 
-signed long int stack_pop()
+signed long int stack_pop(void)
 {
     if (stack_size > 0)
     {
@@ -116,19 +120,19 @@ signed long int stack_pop()
     return 0;
 }
 
-void print_debug_info()
+void print_debug_info(void)
 {
-    printf("IP:%d,%d\n", ip_x, ip_y);
-    printf("DIR:%c\n", ip_inertia);
-    printf("OP:%c (%hhd)\n", field[coords(ip_x, ip_y)], field[coords(ip_x, ip_y)]);
-    printf("STACK:\n");
+    printf("IP: %d,%d\n", ip_x, ip_y);
+    printf("DIR b%c\n", ip_inertia);
+    printf("OP: %c (%hhd)\n", field[coords(ip_x, ip_y)], field[coords(ip_x, ip_y)]);
+    printf("STACK CONTENTS (size: %d, cap: %d):\n", stack_size, stack_capacity);
     for (int i = 0; i < stack_size; ++i)
     {
         printf("STACK(%d): %ld\n", i, stack[i]);
     }
 }
 
-void handle_ip_out_of_field()
+void handle_ip_out_of_field(void)
 {
     if (ip_x < 0)
     {
@@ -149,7 +153,7 @@ void handle_ip_out_of_field()
 }
 
 // Calculate one step of a program. Returns -1 if execution continues, otherwise returns non-zero error code
-int step_field()
+int step_field(void)
 {
     if (!string_mode)
     {
@@ -224,35 +228,35 @@ int step_field()
             break;
         // PC direction right
         case '>':
-            ip_inertia = 'r';
+            ip_inertia = '>';
             break;
         // PC direction left
         case '<':
-            ip_inertia = 'l';
+            ip_inertia = '<';
             break;
         // PC direction up
         case '^':
-            ip_inertia = 'u';
+            ip_inertia = '^';
             break;
         // PC direction down
         case 'v':
-            ip_inertia = 'd';
+            ip_inertia = 'v';
             break;
         // Random PC direction
         case '?':
             switch (rand() % 4)
             {
             case 0:
-                ip_inertia = 'r';
+                ip_inertia = '>';
                 break;
             case 1:
-                ip_inertia = 'l';
+                ip_inertia = '<';
                 break;
             case 2:
-                ip_inertia = 'u';
+                ip_inertia = '^';
                 break;
             case 3:
-                ip_inertia = 'd';
+                ip_inertia = 'v';
                 break;
             }
             break;
@@ -261,11 +265,11 @@ int step_field()
             a = stack_pop();
             if (a == 0)
             {
-                ip_inertia = 'r';
+                ip_inertia = '>';
             }
             else
             {
-                ip_inertia = 'l';
+                ip_inertia = '<';
             }
             break;
         // Vertical IF: pop a value; set direction to down if value=0, set to up otherwise
@@ -273,11 +277,11 @@ int step_field()
             a = stack_pop();
             if (a == 0)
             {
-                ip_inertia = 'd';
+                ip_inertia = '^';
             }
             else
             {
-                ip_inertia = 'u';
+                ip_inertia = 'v';
             }
             break;
         // Toggle stringmode (push each character's ASCII value all the way up to the next ")
@@ -315,16 +319,16 @@ int step_field()
         case '#':
             switch (ip_inertia)
             {
-            case 'u':
+            case '^':
                 ip_y -= 1;
                 break;
-            case 'd':
+            case 'v':
                 ip_y += 1;
                 break;
-            case 'l':
+            case '<':
                 ip_x -= 1;
                 break;
-            case 'r':
+            case '>':
                 ip_x += 1;
                 break;
             }
@@ -411,16 +415,16 @@ int step_field()
 
     switch (ip_inertia)
     {
-    case 'u':
+    case '^':
         ip_y -= 1;
         break;
-    case 'd':
+    case 'v':
         ip_y += 1;
         break;
-    case 'l':
+    case '<':
         ip_x -= 1;
         break;
-    case 'r':
+    case '>':
         ip_x += 1;
         break;
     }
@@ -430,7 +434,7 @@ int step_field()
 }
 
 // Run program on field. Returns 0 on succesful exit (@), otherwise returns non-zero error code
-int run_field()
+int run_field(void)
 {
     int status = RUNTIME_CONTINUE_EXECUTION;
     while (status == RUNTIME_CONTINUE_EXECUTION)
@@ -441,16 +445,78 @@ int run_field()
     return status;
 }
 
-int main()
+void print_usage(void)
 {
+    printf("Usage:\n");
+    printf("cefunge [-w <width>] [-h <height>] [-s <stack capacity>] program.befunge\n");
+    printf("Default: width %d, height %d, stack capacity %d\n", DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_STACK_CAPACITY);
+}
+
+int main(int argc, char **argv)
+{
+    // Usage:
+    // cefunge [-w 80] [-h 25] [-s 1024] program.befunge
+    // -w width     [80]
+    // -h height    [25]
+    // -s stack cap [1024]
+    // program name as last argument
+
+    // Argument handling
+    if (argc < 2)
+    {
+        printf("[ERROR] Befunge file not specified\n");
+        print_usage();
+        return -1;
+    }
+
+    // Default values
+    field_width = DEFAULT_WIDTH;
+    field_height = DEFAULT_HEIGHT;
+    stack_capacity = DEFAULT_STACK_CAPACITY;
+
+    int current_arg = 1;
+    while(current_arg < argc - 2){
+        if(strcmp(argv[current_arg], "-w") == 0){
+            current_arg += 1;
+            field_width = atoi(argv[current_arg]);
+            if(field_width <= 0){
+                printf("[ERROR] Invalid field width specified (%s)!\n", argv[current_arg]);
+                print_usage();
+                return -1;
+            }
+            current_arg += 1;
+        }
+
+        if(strcmp(argv[current_arg], "-h") == 0){
+            current_arg += 1;
+            field_height = atoi(argv[current_arg]);
+            if(field_height <= 0){
+                printf("[ERROR] Invalid field height specified (%s)!\n", argv[current_arg]);
+                print_usage();
+                return -1;
+            }
+            current_arg += 1;
+        }
+
+        if(strcmp(argv[current_arg], "-s") == 0){
+            current_arg += 1;
+            stack_capacity = atoi(argv[current_arg]);
+            if(stack_capacity <= 0){
+                printf("[ERROR] Invalid stack capacity specified (%s)!\n", argv[current_arg]);
+                print_usage();
+                return -1;
+            }
+            current_arg += 1;
+        }
+    }
+
+    char *file_name = argv[argc - 1];
+
+    // Seed random
     srand(time(0));
-    // TODO: add command line arguments handling
-    field_width = 80;
-    field_height = 25;
-    char *file_name = "examples/HelloWorld.befunge";
-    field_length = field_width * field_height;
 
     // Allocate field
+    field_length = field_width * field_height;
     field = calloc(field_length, sizeof(char));
     if (!field)
     {
@@ -460,24 +526,22 @@ int main()
     // Set field to all [SPACE]
     memset(field, ' ', field_length);
 
-    int status;
     // Read program from file
+    int status;
     status = read_field_from_file(file_name);
-
-    string_mode = false;
 
     // Execute rest of the program only if reading was successful
     if (status == FILE_OK)
     {
         // Allocate stack
-        stack_capacity = 1024;
         stack = calloc(stack_capacity, sizeof(signed long int));
         stack_size = 0;
         memset(stack, 0, stack_capacity);
 
         ip_x = 0;
         ip_y = 0;
-        ip_inertia = 'r';
+        ip_inertia = '>';
+        string_mode = false;
 
         print_field(stdout, '-');
 
