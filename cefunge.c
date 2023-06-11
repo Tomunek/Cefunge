@@ -90,18 +90,20 @@ int read_field_from_file(const char *file_name)
     if (!file)
         return FILE_ERROR_OPEN;
 
-    int max_line_length = MAX_READABLE_FILE_LINE;
-    char *line = calloc(max_line_length, sizeof(char));
+    char line[MAX_READABLE_FILE_LINE];
     int line_length = -1;
     int line_number = 0;
 
     while (line_length != 0)
     {
-        memset(line, 0, max_line_length);
+        memset(line, 0, MAX_READABLE_FILE_LINE);
         line_length = 0;
-        if (fgets(line, max_line_length, file))
+        if (fgets(line, MAX_READABLE_FILE_LINE, file))
         {
             line_length = strlen(line);
+            if(line[line_length-1] == '\n' || line[line_length-1] == '\r'){
+                line_length -= 1;
+            }
         }
         if (line_length > 0)
         {
@@ -109,11 +111,6 @@ int read_field_from_file(const char *file_name)
             if (line_length > field_width)
             {
                 return FILE_ERROR_WIDTH_OVERFLOW;
-            }
-            for (int i = 0; i < line_length; ++i)
-            {
-                if (line[i] == '\n' || line[i] == '\r')
-                    line[i] = ' ';
             }
             // Detect height overflow or insert line into field
             if (line_number < field_height)
@@ -312,11 +309,11 @@ int step_field(void)
             a = stack_pop();
             if (a == 0)
             {
-                ip_inertia = '^';
+                ip_inertia = 'v';
             }
             else
             {
-                ip_inertia = 'v';
+                ip_inertia = '^';
             }
             break;
         // Toggle stringmode (push each character's ASCII value all the way up to the next ")
