@@ -1,10 +1,8 @@
 #include "error.h"
 
 // Error code to string translator
-const char *error_to_string(int error)
-{
-    switch (error)
-    {
+const char *error_to_string(int error) {
+    switch (error) {
     case RUNTIME_OK_END:
         return "Success";
     case RUNTIME_ERROR_STACK_OVERFLOW:
